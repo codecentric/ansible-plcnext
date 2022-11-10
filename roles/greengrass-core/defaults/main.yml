@@ -1,0 +1,12 @@
+---
+
+greengrass_user: ggc_user
+greengrass_group: ggc_group
+
+greengrass_core_software_url: "https://d2s8p88vqu9w66.cloudfront.net/releases/greengrass-nucleus-latest.zip"
+
+greengrass_core_upgrade: no
+greengrass_core_thing_name: ""
+greengrass_core_aws_access_key_id: ""
+greengrass_core_aws_secret_access_key: ""
+greengrass_core_aws_region: ""

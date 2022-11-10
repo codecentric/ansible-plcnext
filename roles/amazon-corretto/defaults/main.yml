@@ -1,0 +1,4 @@
+---
+amazon_corretto_upgrade: yes
+amazon_corretto_version: "17"
+amazon_corretto_checksum: "sha256:aeec1a4fb34ffabbac931ba430601807133659a4bd02703c33044e80c925bed2"

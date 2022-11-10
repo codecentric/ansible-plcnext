@@ -1,0 +1,109 @@
+---
+
+- name: Download AWS IoT Greengrass Core software
+  tags:
+    - greengrass_core
+    - greengrass_core_install
+  block:
+
+    - name: Check that the greengrass install archive now exists
+      ansible.builtin.stat:
+        path: /tmp/greengrass-nucleus-latest.zip
+      register: installer_archive
+
+    - name: Check if the greengrass installer archive already exists
+      ansible.builtin.stat:
+        path: /tmp/GreengrassInstaller
+      register: installer_directory
+
+    - name: Download the AWS IoT Greengrass Core software
+      ansible.builtin.get_url:
+        url: "{{ greengrass_core_software_url }}"
+        dest: /tmp/greengrass-nucleus-latest.zip
+      register: download_greengrass
+      retries: 5
+      delay: 5
+      until: not download_greengrass.failed
+      when: (greengrass_core_software_url is defined and not installer_archive.stat.exists) or greengrass_core_upgrade
+
+    - name: Remove archive
+      ansible.builtin.file:
+        path: /tmp/GreengrassInstaller
+        state: absent
+      when: greengrass_core_upgrade
+
+    - name: Unarchive the AWS IoT Greengrass Core software
+      # can't use ansible.builtin.unarchive because it requires zipinfo, which isn't installed on the PLCnext AXC F 3152
+      ansible.builtin.shell: |
+        unzip /tmp/greengrass-nucleus-latest.zip -d /tmp/GreengrassInstaller
+      register: greengrass_archive
+      when: not installer_directory.stat.exists or greengrass_core_upgrade
+
+- name: Install AWS IoT Greengrass Core software
+  tags:
+    - greengrass_core
+    - greengrass_core_install
+  block:
+    - name: Check that the greengrass install archive = exists
+      ansible.builtin.stat:
+        path: /greengrass/v2/
+      register: greengrass_core_stat
+
+    - name: Provision a new Greengrass Core device
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ greengrass_core_aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ greengrass_core_aws_secret_access_key }}"
+      ansible.builtin.shell: |
+        java -Dlog.store=FILE \
+          -jar /tmp/GreengrassInstaller/lib/Greengrass.jar \
+          --aws-region {{ greengrass_core_aws_region }} \
+          --root /greengrass/v2 \
+          --thing-name {{ greengrass_core_thing_name }}_GreengrassCore \
+          --tes-role-name GreengrassV2TokenExchangeRole \
+          --tes-role-alias-name GreengrassTESCertificatePolicyGreengrassV2TokenExchangeRoleAlias \
+          --component-default-user {{ greengrass_user }}:{{ greengrass_group }} \
+          --provision true \
+          --start false \
+          --setup-system-service false
+      when: not greengrass_core_stat.stat.exists or greengrass_core_upgrade
+      register: greengrass_provision_output
+
+    - debug:
+        msg: "{{ greengrass_provision_output.stdout_lines }}"
+      when: greengrass_provision_output is not skipped
+
+    - name: Install greengrassd service
+      copy:
+        src: "{{ item }}"
+        dest: "/{{ item }}"
+        mode: 0755
+      loop:
+        - etc/init.d/greengrassd
+
+    - name: Stop greengrassd service
+      ansible.builtin.shell: service greengrassd stop
+      register: greengrass_service_stop
+      failed_when:
+        - greengrass_service_stop.rc >= 1
+
+    - name: Start greengrassd service
+      ansible.builtin.sysvinit:
+        name: greengrassd
+        enabled: yes
+        state: started
+        runlevels:
+          - 3
+
+- name: Configure AWS IoT Greengrass Core software
+  tags:
+    - greengrass_core
+    - greengrass_core_install
+    - greengrass_core_configure_service
+  block:
+    - name: Add greengrass user to sudoers
+      community.general.sudoers:
+        name: greengrass
+        state: present
+        user: "{{ greengrass_user }}"
+        nopassword: yes
+        commands: ALL

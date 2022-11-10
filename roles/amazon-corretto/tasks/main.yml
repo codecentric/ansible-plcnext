@@ -1,0 +1,57 @@
+---
+
+- name: Download and install Amazon Corretto
+  tags:
+    - amazon_corretto
+    - amazon_corretto_install
+  block:
+    - name: Ensure that lib64 is a symlink to lib
+      file:
+        src: /usr/lib
+        dest: /usr/lib64
+        state: link
+        force: yes
+      when: ansible_architecture == "aarch64"
+
+    - name: Create directories for Java versions
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      loop:
+        - /usr/lib/jvm
+        - /usr/java
+
+    - name: "Download Corretto {{ amazon_corretto_version }}"
+      become: false
+      get_url:
+        url: "https://corretto.aws/downloads/latest/amazon-corretto-{{ amazon_corretto_version }}-x64-linux-jdk.tar.gz"
+        dest: "/tmp/"
+        checksum: "{{ amazon_corretto_checksum }}"
+      register: corretto_download
+      retries: 5
+      delay: 5
+      until: not corretto_download.failed
+      when: amazon_corretto_version is defined and amazon_corretto_upgrade
+
+    - name: Check if the Corretto version is already installed
+      ansible.builtin.stat:
+        path: "/tmp/amazon-corretto-{{ amazon_corretto_version }}-x64-linux-jdk.tar.gz"
+      register: download_directory
+
+    - name: Unarchive the AWS IoT Greengrass Core software
+      ansible.builtin.unarchive:
+        src: "{{ corretto_download.dest }}"
+        dest: "/usr/lib/jvm/"
+        remote_src: yes
+        list_files: yes
+      register: corretto_archive
+      when: download_directory.stat.exists or amazon_corretto_upgrade
+
+    - name: Add Corretto to PATH
+      template:
+        src: "templates/etc/profile.d/java.sh.j2"
+        dest: "/etc/profile.d/java.sh"
+        mode: 0664
+      vars:
+        java_home: "/usr/lib/jvm/{{ corretto_archive.files[0] }}"

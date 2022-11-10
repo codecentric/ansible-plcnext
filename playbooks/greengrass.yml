@@ -1,0 +1,20 @@
+---
+
+- hosts: all
+  become: yes
+  become_flags: -i
+  vars_prompt:
+    - name: "greengrass_core_aws_access_key_id"
+      prompt: "AWS Access Key ID"
+      private: yes
+    - name: "greengrass_core_aws_secret_access_key"
+      prompt: "AWS Secret Access Key"
+      private: yes
+    - name: "greengrass_core_aws_region"
+      prompt: "AWS Region for Greengrass Core"
+      private: no
+
+  roles:
+    - docker
+    - amazon-corretto
+    - greengrass-core
