@@ -5,14 +5,30 @@
     - docker
     - docker_install
   block:
-    - name: Populate service facts
-      ansible.builtin.service_facts:
+# Due to a bug in the PLCnext Firmware, the system will crash when requesting the status of all services. The cause seems to be /etc/init.d/sendsigs
+# The issue should be resolved in the next firmware release 2023.0 LTS.
+# See: https://www.plcnext-community.net/forum/#/discussion/3029/bug-system-crashes-when-requesting-all-service-statuses-on-axc-f-3152
+#     - name: Populate service facts
+#       ansible.builtin.service_facts:
 
-    - name: Stop docker service, if running
-      ansible.builtin.service:
+#     - name: Stop docker service, if running
+#       ansible.builtin.service:
+#         name: docker
+#         state: stopped
+#       when: ansible_facts.services["docker.service"] is defined and ansible_facts.services["docker.service"].state == "running"
+
+    - name: Create docker group
+      ansible.builtin.group:
         name: docker
-        state: stopped
-      when: ansible_facts.services["docker.service"] is defined and ansible_facts.services["docker.service"].state == "running"
+        state: present
+
+    - name: Create docker user
+      ansible.builtin.user:
+        name: docker
+        state: present
+        groups:
+          - docker
+        append: yes
 
     - name: Download and extract docker binaries
       ansible.builtin.unarchive:
@@ -23,6 +39,11 @@
         owner: root
         group: root
 
+- name: Copy docker configuration
+  tags:
+    - docker
+    - docker_copy_configuration
+  block:
     - name: Ensure directories exists
       ansible.builtin.file:
         path: "{{ item }}"
