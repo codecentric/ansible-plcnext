@@ -1,0 +1,17 @@
+---
+
+- name: Symlink missing 64bit interpreter
+  block:
+    - name: Check if /lib64/ld-linux-x86-64.so.2 exists
+      ansible.builtin.stat:
+        path: /lib64/ld-linux-x86-64.so.2
+      register: ld_linux_x86_64_so
+      changed_when: false
+      failed_when: false
+
+    - name: Create symlink for missing 64bit interpreter
+      ansible.builtin.file:
+          src: /lib/ld-linux-x86-64.so.2
+          dest: /lib64/ld-linux-x86-64.so.2
+          state: link
+      when: not ld_linux_x86_64_so.stat.exists
