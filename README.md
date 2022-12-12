@@ -11,10 +11,10 @@ application that can calculate the distance between people in a video feed area.
 an [EdgeTPU][2] accelerator for close to real-time detection and a network camera.
 The computed results can be published to a MQTT broker.
 
-While working with PLCnext Linux, we found that there were some repetitive tasks that we had to do on every controller,
-so we created these roles and playbooks to automate tasks such as setting the time and date, installing a
-container runtime, and setting up a remote access agent.
-This makes it easier to provision new PLCnext controllers, saving time and reducing the potential for errors.
+While working with PLCnext Linux, we found that we were performing some repetitive tasks when setting up new and
+managing existing controllers, so we created these roles and playbooks to help us save time and reduce the potential
+for errors when configuring new controllers, so that we can focus on application development instead of hunting down
+configuration issues.
 
 ## Roles
 
